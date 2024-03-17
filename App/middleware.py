@@ -1,43 +1,30 @@
-# middleware.py
-
 from rest_framework.authtoken.models import Token
 from channels.db import database_sync_to_async
 from django.contrib.auth.models import AnonymousUser
 
-
-
 class TokenAuthMiddleware:
-    """
-    Token authentication middleware for WebSocket connections.
-    """
-
     def __init__(self, inner):
         self.inner = inner
 
-    def __call__(self, scope):
-        return TokenAuthMiddlewareInstance(scope, self)
+    async def __call__(self, scope, receive, send):
+        token = self.get_token_from_scope(scope)
+        scope['user'] = await self.get_user_from_token(token)
+        return await self.inner(scope, receive, send)
 
-class TokenAuthMiddlewareInstance:
-    """
-    Token authentication middleware instance.
-    """
-
-    def __init__(self, scope, middleware):
-        self.scope = dict(scope)
-        self.inner = middleware.inner
-
-    async def __call__(self, receive, send):
-        token = self.scope.get("query_string").decode().split("token=")[1].strip()
-
-        try:
-            token_obj = await self.get_token(token)
-            self.scope["user"] = token_obj.user
-        except Token.DoesNotExist:
-            self.scope["user"] = AnonymousUser()
-
-        inner = self.inner(self.scope)
-        return await inner(receive, send)
+    def get_token_from_scope(self, scope):
+        query_params = scope.get('query_string', b'').decode()
+        token = None
+        for param in query_params.split('&'):
+            key, value = param.split('=')
+            if key == 'token':
+                token = value
+                break
+        return token
 
     @database_sync_to_async
-    def get_token(self, key):
-        return Token.objects.get(key=key)
+    def get_user_from_token(self, token_key):
+        try:
+            token = Token.objects.get(key=token_key)
+            return token.user
+        except Token.DoesNotExist:
+            return AnonymousUser()

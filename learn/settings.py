@@ -1,8 +1,6 @@
 from pathlib import Path
 import os
 
-os.system("clear")
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -29,21 +27,9 @@ INSTALLED_APPS = [
     'App',
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework.authtoken',
     'channels',
 ]
-
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    )
-
-}
-
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels.layers.InMemoryChannelLayer',  # Use an in-memory channel layer for development
-    },
-}
 
 
 MIDDLEWARE = [
@@ -76,7 +62,6 @@ TEMPLATES = [
 
 # WSGI_APPLICATION = 'learn.wsgi.application'
 ASGI_APPLICATION = 'learn.asgi.application'
-
 
 
 # Database
@@ -130,3 +115,26 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+#JWT Auth
+# REST_FRAMEWORK = {
+#     'DEFAULT_AUTHENTICATION_CLASSES': (
+#         'rest_framework_simplejwt.authentication.JWTAuthentication',
+#     )
+
+# }
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.BasicAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ]
+}
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',  # Use an in-memory channel layer for development
+    },
+}
+
+os.system("clear")

@@ -4,7 +4,7 @@ from django.contrib.auth import authenticate
 from django.forms.models import model_to_dict
 from rest_framework import status
 from rest_framework.authentication import TokenAuthentication
-# from rest_framework.authtoken.models import Token
+from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view,action
 from rest_framework.mixins import ListModelMixin
 from rest_framework.permissions import IsAuthenticated
@@ -15,6 +15,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.tokens import RefreshToken
 
 #when sending token in header we nedd to specify Toekn or Bearer
+# use [BearerTokenAuthentication] insted of [TokenAuthentication]
 class BearerTokenAuthentication(TokenAuthentication):
     keyword = 'Bearer'
 
@@ -30,13 +31,14 @@ class login(APIView):
         user = authenticate(username=username, password=password)
         if not user:
             return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
-        # token,_ = Token.objects.get_or_create(user=user)
+        token,_ = Token.objects.get_or_create(user=user)
         serializer = UserSerializer(user) # or use payload = model_to_dict(user) 
-        refresh = RefreshToken.for_user(user)
-        return Response({"payload":serializer.data,"refresh":str(refresh),"access":str(refresh.access_token)})
+        # refresh = RefreshToken.for_user(user)
+        return Response({"payload":serializer.data,"access":str(token.key)})
     
 class view_details(APIView):
-    authentication_classes = [JWTAuthentication]
+    # authentication_classes = [JWTAuthentication]
+    authentication_classes = [BearerTokenAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request, format=None):
@@ -47,6 +49,7 @@ class view_details(APIView):
  
 class UserdetailViewset(ListModelMixin,GenericViewSet):
     serializer_class = UserSerializer
+    authentication_classes = [BearerTokenAuthentication]
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):

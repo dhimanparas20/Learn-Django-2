@@ -3,16 +3,38 @@ from channels.generic.websocket import WebsocketConsumer,JsonWebsocketConsumer,a
 from .models import *
 from . serializers import *
 from urllib.parse import parse_qs
+import json
 from django.contrib.auth.models import AnonymousUser
 from rest_framework.authtoken.models import Token
+count:int = 0
+counts = {}
+groups = []
 
 class ChatConsumer(JsonWebsocketConsumer):
     def connect(self):
-        self.room_name = self.scope['url_route']['kwargs']['room_name']
-        self.room_group_name = 'chat_%s' % self.room_name
+        global count 
+        self.room_group_name = self.scope['url_route']['kwargs']['room_name']
         self.user = self.scope["user"] 
+        
+        # Set the username for the user
         if self.user == AnonymousUser():
-            self.user.username = "AnonymousUser"
+            # Initialize count for the chat group if it doesn't exist
+            if self.room_group_name not in counts:
+                counts[self.room_group_name] = 0
+            
+            # Increment count for the chat group
+            counts[self.room_group_name] += 1
+            self.user.username = f"AnonymousUser{counts[self.room_group_name]}_{self.room_group_name}"
+            data = {
+                "Welcome": f"AnonymousUser{counts[self.room_group_name]}",
+                "group": f"{self.room_group_name}",
+            }
+        else:
+            data = {
+                "Welcome": f"{self.user.username}",
+                "group": f"{self.room_group_name}",
+            }
+            
         # query_string = self.scope['query_string'].decode('utf-8')
         # query_params = query_string.split('=')  # Split query string on '='
 
@@ -29,11 +51,20 @@ class ChatConsumer(JsonWebsocketConsumer):
             self.room_group_name,
             self.channel_name
         )
-              
+     
         self.accept()
+        self.send_json(data)
 
     def disconnect(self, close_code):
         # Leave room group
+        global count
+        # Decrement count for the chat group
+        if self.user == AnonymousUser():
+            if self.room_group_name in counts:
+                counts[self.room_group_name] -= 1
+            # Remove the room group from the list of active groups
+            if self.room_group_name in groups:
+                groups.remove(self.room_group_name)
         async_to_sync(self.channel_layer.group_discard)(
             self.room_group_name,
             self.channel_name
